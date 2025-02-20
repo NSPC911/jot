@@ -15,16 +15,17 @@ icons = {
     "markdown": "  ",
     "text": "  ",
     "pdf": "  ",
-    "default": "  "
+    "default": "  ",
 }
 
 # Load the ~~cannon~~ config
-with open(os.path.join(os.path.dirname(__file__), 'config.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(__file__), "config.json"), "r") as f:
     config = json.load(f)
 
 # support system vars
 main_dir = os.path.expandvars(config["main_dir"])
 keybinds = config["keybinds"]
+
 
 def draw_input_box(stdscr, prompt):
     h, w = stdscr.getmaxyx()
@@ -56,6 +57,7 @@ def draw_input_box(stdscr, prompt):
     curses.noecho()
     return user_input.strip()
 
+
 def get_folders():
     folders = {"folders": {}, "files": []}
     for root, _, files in os.walk(main_dir):
@@ -66,18 +68,21 @@ def get_folders():
             folders["folders"][folder] = files
     return folders
 
+
 def truncate_text(text, max_width):
     if len(text) > max_width:
-        return text[:max_width - 3] + "..."
+        return text[: max_width - 3] + "..."
     return text
+
 
 def confirm_deletion(stdscr, item):
     prompt = f"Are you sure you want to delete '{item}'? (y/n)"
-    return draw_input_box(stdscr, prompt).lower() == 'y'
+    return draw_input_box(stdscr, prompt).lower() == "y"
+
 
 def open_markdown(file_path):
     def convert_and_open():
-        html_path = file_path.replace('.md', '.html')
+        html_path = file_path.replace(".md", ".html")
         subprocess.run(["pandoc", file_path, "-o", html_path])
         webbrowser.open(html_path)
         time.sleep(2)
@@ -87,28 +92,34 @@ def open_markdown(file_path):
     thread.start()
     thread.join()
 
+
 def rename_item(stdscr, old_path):
     new_name = draw_input_box(stdscr, "Enter new name")
     if new_name:
         new_path = os.path.join(os.path.dirname(old_path), new_name)
         os.rename(old_path, new_path)
 
+
 def get_icon(file_name):
-    ext = file_name.split('.')[-1].lower()
-    if ext in ['png', 'jpg', 'jpeg', 'gif']:
+    ext = file_name.split(".")[-1].lower()
+    if ext in ["png", "jpg", "jpeg", "gif"]:
         return icons["image"]
-    elif ext == 'md':
+    elif ext == "md":
         return icons["markdown"]
-    elif ext == 'txt':
+    elif ext == "txt":
         return icons["text"]
-    elif ext == 'pdf':
+    elif ext == "pdf":
         return icons["pdf"]
     else:
         return icons["default"]
 
+
 def show_keybinds(stdscr):
     h, w = stdscr.getmaxyx()
-    box_h, box_w = len(keybinds) + 4, max(len(k) + len(v) + 4 for k, v in keybinds.items()) + 4
+    box_h, box_w = (
+        len(keybinds) + 4,
+        max(len(k) + len(v) + 4 for k, v in keybinds.items()) + 4,
+    )
     box_y, box_x = (h - box_h) // 2, (w - box_w) // 2
 
     keybind_win = curses.newwin(box_h, box_w, box_y, box_x)
@@ -119,8 +130,9 @@ def show_keybinds(stdscr):
     keybind_win.refresh()
     keybind_win.getch()
 
+
 def main(stdscr):
-    curses.curs_set(0) # disappear among a sea of butterflies
+    curses.curs_set(0)  # disappear among a sea of butterflies
     curses.start_color()
 
     # start the screen
@@ -182,11 +194,29 @@ def main(stdscr):
 
         # Set border based on focus
         if focused_left:
-            left_win.border(curses.ACS_VLINE, curses.ACS_VLINE, curses.ACS_HLINE, curses.ACS_HLINE, curses.ACS_ULCORNER, curses.ACS_URCORNER, curses.ACS_LLCORNER, curses.ACS_LRCORNER)
-            right_win.border(' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ')
+            left_win.border(
+                curses.ACS_VLINE,
+                curses.ACS_VLINE,
+                curses.ACS_HLINE,
+                curses.ACS_HLINE,
+                curses.ACS_ULCORNER,
+                curses.ACS_URCORNER,
+                curses.ACS_LLCORNER,
+                curses.ACS_LRCORNER,
+            )
+            right_win.border(" ", " ", " ", " ", " ", " ", " ", " ")
         else:
-            left_win.border(' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ')
-            right_win.border(curses.ACS_VLINE, curses.ACS_VLINE, curses.ACS_HLINE, curses.ACS_HLINE, curses.ACS_ULCORNER, curses.ACS_URCORNER, curses.ACS_LLCORNER, curses.ACS_LRCORNER)
+            left_win.border(" ", " ", " ", " ", " ", " ", " ", " ")
+            right_win.border(
+                curses.ACS_VLINE,
+                curses.ACS_VLINE,
+                curses.ACS_HLINE,
+                curses.ACS_HLINE,
+                curses.ACS_ULCORNER,
+                curses.ACS_URCORNER,
+                curses.ACS_LLCORNER,
+                curses.ACS_LRCORNER,
+            )
 
         # Draw left-side panel
         for i in range(box_h - 2):
@@ -231,14 +261,14 @@ def main(stdscr):
         # Get input
         key = stdscr.getch()
 
-        if key == ord(keybinds['quit']):  # Quit
+        if key == ord(keybinds["quit"]):  # Quit
             break
-        elif key == ord(keybinds['refresh']):  # Refresh
+        elif key == ord(keybinds["refresh"]):  # Refresh
             folders = get_folders()
             left_items = list(folders["folders"].keys()) + folders["files"]
             left_win.box()
             right_win.box()
-        elif key in [ord('h'), ord('?')]:  # Show keybinds
+        elif key in [ord("h"), ord("?")]:  # Show keybinds
             show_keybinds(stdscr)
 
         if focused_left:
@@ -261,11 +291,11 @@ def main(stdscr):
                     if os.path.isdir(file_path):
                         right_content = folders["folders"].get(file, [])
                     else:
-                        if file.endswith(('.txt', '.md')):
+                        if file.endswith((".txt", ".md")):
                             os.system(f"nano {file_path}")
                         else:
                             os.system(f"{config['open_with']} \"{file_path}\"")
-            elif key == ord(keybinds['delete']):
+            elif key == ord(keybinds["delete"]):
                 item = left_items[left_selected]
                 if confirm_deletion(stdscr, item):
                     if left_selected < len(folders["folders"]):
@@ -282,7 +312,7 @@ def main(stdscr):
                             pass
                 folders = get_folders()
                 left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds['new_folder']):
+            elif key == ord(keybinds["new_folder"]):
                 folder_name = draw_input_box(stdscr, "Enter folder name")
                 if folder_name:
                     try:
@@ -291,18 +321,21 @@ def main(stdscr):
                         pass
                     folders = get_folders()
                     left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds['new_file']):
+            elif key == ord(keybinds["new_file"]):
                 file_name = draw_input_box(stdscr, "Enter file name")
                 if file_name:
-                    with open(os.path.join(main_dir, file_name), "w") as f:
-                        f.write(f"# {'.'.join(file_name.split('.')[:-1])}")
+                    try:
+                        with open(os.path.join(main_dir, file_name), "w") as f:
+                            f.write(f"# {'.'.join(file_name.split('.')[:-1])}")
+                    except PermissionError:  # Same name as a folder
+                        pass
                     folders = get_folders()
                     left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds['view_markdown']):
+            elif key == ord(keybinds["view_markdown"]):
                 file = left_items[left_selected]
-                if file.endswith('.md'):
+                if file.endswith(".md"):
                     open_markdown(os.path.join(main_dir, file))
-            elif key == ord(keybinds['rename']):
+            elif key == ord(keybinds["rename"]):
                 item = left_items[left_selected]
                 old_path = os.path.join(main_dir, item)
                 rename_item(stdscr, old_path)
@@ -323,34 +356,42 @@ def main(stdscr):
                 file = right_content[right_selected]
                 file_path = os.path.join(main_dir, left_items[left_selected], file)
                 if os.path.isdir(file_path):
-                    right_content = folders["folders"].get(os.path.join(left_items[left_selected], file), [])
+                    right_content = folders["folders"].get(
+                        os.path.join(left_items[left_selected], file), []
+                    )
                 else:
-                    if file.endswith(('.txt', '.md', '.html')):
+                    if file.endswith((".txt", ".md", ".html")):
                         os.system(f"{config['open_with']} \"{file_path}\"")
                     else:
-                        os.system(f"\"{file_path}\"")
-            elif key == ord(keybinds['delete']):
+                        os.system(f'"{file_path}"')
+            elif key == ord(keybinds["delete"]):
                 file = right_content[right_selected]
                 if confirm_deletion(stdscr, file):
                     os.remove(os.path.join(main_dir, left_items[left_selected], file))
                     folders = get_folders()
                     left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds['new_file']):
+            elif key == ord(keybinds["new_file"]):
                 file_name = draw_input_box(stdscr, "Enter file name")
                 if file_name:
-                    with open(os.path.join(main_dir, left_items[left_selected], file_name), "w") as f:
+                    with open(
+                        os.path.join(main_dir, left_items[left_selected], file_name),
+                        "w",
+                    ) as f:
                         f.write(f"# {'.'.join(file_name.split('.')[:-1])}")
                     folders = get_folders()
                     left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds['view_markdown']):
+            elif key == ord(keybinds["view_markdown"]):
                 file = right_content[right_selected]
-                if file.endswith('.md'):
-                    open_markdown(os.path.join(main_dir, left_items[left_selected], file))
-            elif key == ord(keybinds['rename']):
+                if file.endswith(".md"):
+                    open_markdown(
+                        os.path.join(main_dir, left_items[left_selected], file)
+                    )
+            elif key == ord(keybinds["rename"]):
                 file = right_content[right_selected]
                 old_path = os.path.join(main_dir, left_items[left_selected], file)
                 rename_item(stdscr, old_path)
                 folders = get_folders()
                 left_items = list(folders["folders"].keys()) + folders["files"]
+
 
 curses.wrapper(main)
