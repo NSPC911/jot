@@ -1,0 +1,13 @@
+{
+    "main_dir": "%USERPROFILE%/Documents/notes",
+    "keybinds": {
+        "quit": "q",
+        "refresh": "r",
+        "new_file": "n",
+        "new_folder": "N",
+        "delete": "d",
+        "rename": "R",
+        "view_markdown": "v"
+    },
+    "open_with": "nano"
+}
