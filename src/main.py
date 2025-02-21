@@ -58,10 +58,10 @@ def draw_input_box(stdscr, prompt):
     return user_input.strip()
 
 
-def get_folders():
+def get_folders(current_dir):
     folders = {"folders": {}, "files": []}
-    for root, _, files in os.walk(main_dir):
-        folder = os.path.relpath(root, main_dir)
+    for root, _, files in os.walk(current_dir):
+        folder = os.path.relpath(root, current_dir)
         if folder == ".":
             folders["files"] = files
         else:
@@ -139,8 +139,10 @@ def main(stdscr):
     stdscr.clear()
     stdscr.refresh()
 
+    current_dir = main_dir
+
     # Get folders and files
-    folders = get_folders()
+    folders = get_folders(current_dir)
 
     # make screen
     h, w = stdscr.getmaxyx()
@@ -156,16 +158,12 @@ def main(stdscr):
     right_x = left_x + box_w + separation
     right_y = margin_h
     right_win = curses.newwin(box_h, box_w, right_y, right_x)
-    left_win.box()
-    right_win.box()
 
     left_items = list(folders["folders"].keys()) + folders["files"]
 
     # scroll
     left_selected = 0
     left_scroll = 0
-    right_selected = 0
-    right_scroll = 0
 
     focused_left = True  # Start on left panel
 
@@ -184,42 +182,18 @@ def main(stdscr):
             right_x = left_x + box_w + separation
             right_y = margin_h
             right_win = curses.newwin(box_h, box_w, right_y, right_x)
-            left_win.box()
-            right_win.box()
             prev_h, prev_w = h, w
 
         # Clear windows
         left_win.clear()
         right_win.clear()
 
-        # Set border based on focus
-        if focused_left:
-            left_win.border(
-                curses.ACS_VLINE,
-                curses.ACS_VLINE,
-                curses.ACS_HLINE,
-                curses.ACS_HLINE,
-                curses.ACS_ULCORNER,
-                curses.ACS_URCORNER,
-                curses.ACS_LLCORNER,
-                curses.ACS_LRCORNER,
-            )
-            right_win.border(" ", " ", " ", " ", " ", " ", " ", " ")
-        else:
-            left_win.border(" ", " ", " ", " ", " ", " ", " ", " ")
-            right_win.border(
-                curses.ACS_VLINE,
-                curses.ACS_VLINE,
-                curses.ACS_HLINE,
-                curses.ACS_HLINE,
-                curses.ACS_ULCORNER,
-                curses.ACS_URCORNER,
-                curses.ACS_LLCORNER,
-                curses.ACS_LRCORNER,
-            )
+        # Draw current path label
+        current_path_label = truncate_text(current_dir, box_w - 4)
+        left_win.addstr(0, 2, f" {current_path_label} ")
 
         # Draw left-side panel
-        for i in range(box_h - 2):
+        for i in range(box_h - 3):
             idx = left_scroll + i
             if idx < len(left_items):
                 if idx < len(folders["folders"]):
@@ -234,25 +208,27 @@ def main(stdscr):
                     left_win.attroff(curses.A_REVERSE)
 
         # Get right-side content
+        right_content = ""
         if left_selected < len(folders["folders"]):
-            right_content = folders["folders"].get(left_items[left_selected], [])
+            right_content = "Folder"
         else:
-            right_content = []
+            file = left_items[left_selected]
+            file_path = os.path.join(current_dir, file)
+            if os.path.isfile(file_path):
+                with open(file_path, "r") as f:
+                    right_content = f.read()
+            else:
+                right_content = f"Opens with: {config['open_with']}"
 
         # Draw right-side panel
+        right_lines = right_content.splitlines()
         for i in range(box_h - 2):
-            idx = right_scroll + i
-            if idx < len(right_content):
-                item_text = get_icon(right_content[idx]) + right_content[idx] + " "
-                item_text = truncate_text(item_text, box_w - 4)
-                if focused_left:
-                    right_win.addstr(i + 1, 2, item_text)
-                elif idx == right_selected:
-                    right_win.attron(curses.A_REVERSE)
-                    right_win.addstr(i + 1, 2, item_text)
-                    right_win.attroff(curses.A_REVERSE)
-                else:
-                    right_win.addstr(i + 1, 2, item_text)
+            if i < len(right_lines):
+                right_win.addstr(i + 1, 2, truncate_text(right_lines[i], box_w - 4))
+
+        # Draw borders
+        left_win.box()
+        right_win.box()
 
         # Refresher
         left_win.refresh()
@@ -264,17 +240,15 @@ def main(stdscr):
         if key == ord(keybinds["quit"]):  # Quit
             break
         elif key == ord(keybinds["refresh"]):  # Refresh
-            folders = get_folders()
+            folders = get_folders(current_dir)
             left_items = list(folders["folders"].keys()) + folders["files"]
-            left_win.box()
-            right_win.box()
         elif key in [ord("h"), ord("?")]:  # Show keybinds
             show_keybinds(stdscr)
 
         if focused_left:
             if key == curses.KEY_DOWN and left_selected < len(left_items) - 1:
                 left_selected += 1
-                if left_selected >= left_scroll + (box_h - 2):
+                if left_selected >= left_scroll + (box_h - 3):
                     left_scroll += 1
             elif key == curses.KEY_UP and left_selected > 0:
                 left_selected -= 1
@@ -282,12 +256,14 @@ def main(stdscr):
                     left_scroll -= 1
             elif key in [curses.KEY_RIGHT, 10, 32]:  # Right Arrow, Enter, Space
                 if left_selected < len(folders["folders"]):
-                    focused_left = False
-                    right_selected = 0
-                    right_scroll = 0
+                    current_dir = os.path.join(current_dir, left_items[left_selected])
+                    folders = get_folders(current_dir)
+                    left_items = list(folders["folders"].keys()) + folders["files"]
+                    left_selected = 0
+                    left_scroll = 0
                 else:
                     file = left_items[left_selected]
-                    file_path = os.path.join(main_dir, file)
+                    file_path = os.path.join(current_dir, file)
                     if os.path.isdir(file_path):
                         right_content = folders["folders"].get(file, [])
                     else:
@@ -301,97 +277,52 @@ def main(stdscr):
                     if left_selected < len(folders["folders"]):
                         folder = item
                         try:
-                            shutil.rmtree(os.path.join(main_dir, folder))
+                            shutil.rmtree(os.path.join(current_dir, folder))
                         except FileNotFoundError:
                             pass
                     else:
                         file = item
                         try:
-                            os.remove(os.path.join(main_dir, file))
+                            os.remove(os.path.join(current_dir, file))
                         except FileNotFoundError:
                             pass
-                folders = get_folders()
+                folders = get_folders(current_dir)
                 left_items = list(folders["folders"].keys()) + folders["files"]
             elif key == ord(keybinds["new_folder"]):
                 folder_name = draw_input_box(stdscr, "Enter folder name")
                 if folder_name:
                     try:
-                        os.mkdir(os.path.join(main_dir, folder_name))
+                        os.mkdir(os.path.join(current_dir, folder_name))
                     except FileExistsError:
                         pass
-                    folders = get_folders()
+                    folders = get_folders(current_dir)
                     left_items = list(folders["folders"].keys()) + folders["files"]
             elif key == ord(keybinds["new_file"]):
                 file_name = draw_input_box(stdscr, "Enter file name")
                 if file_name:
                     try:
-                        with open(os.path.join(main_dir, file_name), "w") as f:
+                        with open(os.path.join(current_dir, file_name), "w") as f:
                             f.write(f"# {'.'.join(file_name.split('.')[:-1])}")
                     except PermissionError:  # Same name as a folder
                         pass
-                    folders = get_folders()
+                    folders = get_folders(current_dir)
                     left_items = list(folders["folders"].keys()) + folders["files"]
             elif key == ord(keybinds["view_markdown"]):
                 file = left_items[left_selected]
                 if file.endswith(".md"):
-                    open_markdown(os.path.join(main_dir, file))
+                    open_markdown(os.path.join(current_dir, file))
             elif key == ord(keybinds["rename"]):
                 item = left_items[left_selected]
-                old_path = os.path.join(main_dir, item)
+                old_path = os.path.join(current_dir, item)
                 rename_item(stdscr, old_path)
-                folders = get_folders()
+                folders = get_folders(current_dir)
                 left_items = list(folders["folders"].keys()) + folders["files"]
-        else:
-            if key == curses.KEY_DOWN and right_selected < len(right_content) - 1:
-                right_selected += 1
-                if right_selected >= right_scroll + (box_h - 2):
-                    right_scroll += 1
-            elif key == curses.KEY_UP and right_selected > 0:
-                right_selected -= 1
-                if right_selected < right_scroll:
-                    right_scroll -= 1
-            elif key in [curses.KEY_LEFT, 127]:  # Left Arrow or Backspace
-                focused_left = True
-            elif key in [curses.KEY_RIGHT, 10, 32]:
-                file = right_content[right_selected]
-                file_path = os.path.join(main_dir, left_items[left_selected], file)
-                if os.path.isdir(file_path):
-                    right_content = folders["folders"].get(
-                        os.path.join(left_items[left_selected], file), []
-                    )
-                else:
-                    if file.endswith((".txt", ".md", ".html")):
-                        os.system(f"{config['open_with']} \"{file_path}\"")
-                    else:
-                        os.system(f'"{file_path}"')
-            elif key == ord(keybinds["delete"]):
-                file = right_content[right_selected]
-                if confirm_deletion(stdscr, file):
-                    os.remove(os.path.join(main_dir, left_items[left_selected], file))
-                    folders = get_folders()
-                    left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds["new_file"]):
-                file_name = draw_input_box(stdscr, "Enter file name")
-                if file_name:
-                    with open(
-                        os.path.join(main_dir, left_items[left_selected], file_name),
-                        "w",
-                    ) as f:
-                        f.write(f"# {'.'.join(file_name.split('.')[:-1])}")
-                    folders = get_folders()
-                    left_items = list(folders["folders"].keys()) + folders["files"]
-            elif key == ord(keybinds["view_markdown"]):
-                file = right_content[right_selected]
-                if file.endswith(".md"):
-                    open_markdown(
-                        os.path.join(main_dir, left_items[left_selected], file)
-                    )
-            elif key == ord(keybinds["rename"]):
-                file = right_content[right_selected]
-                old_path = os.path.join(main_dir, left_items[left_selected], file)
-                rename_item(stdscr, old_path)
-                folders = get_folders()
+            elif key == curses.KEY_LEFT and current_dir != main_dir:
+                current_dir = os.path.dirname(current_dir)
+                folders = get_folders(current_dir)
                 left_items = list(folders["folders"].keys()) + folders["files"]
+                left_selected = 0
+                left_scroll = 0
 
 
 curses.wrapper(main)
