@@ -60,12 +60,12 @@ def draw_input_box(stdscr, prompt):
 
 def get_folders(current_dir):
     folders = {"folders": {}, "files": []}
-    for root, _, files in os.walk(current_dir):
-        folder = os.path.relpath(root, current_dir)
-        if folder == ".":
-            folders["files"] = files
-        else:
-            folders["folders"][folder] = files
+    with os.scandir(current_dir) as it:
+        for entry in it:
+            if entry.is_dir():
+                folders["folders"][entry.name] = get_folders(entry.path)
+            else:
+                folders["files"].append(entry.name)
     return folders
 
 
@@ -210,13 +210,24 @@ def main(stdscr):
         # Get right-side content
         right_content = ""
         if left_selected < len(folders["folders"]):
-            right_content = "Folder"
+            folder_name = left_items[left_selected]
+            folder_path = os.path.join(current_dir, folder_name)
+            inner_items = get_folders(folder_path)
+            right_content = "\n".join(
+                [icons["folder"] + name for name in inner_items["folders"].keys()]
+                + [get_icon(name) + name for name in inner_items["files"]]
+            )
         else:
             file = left_items[left_selected]
             file_path = os.path.join(current_dir, file)
             if os.path.isfile(file_path):
-                with open(file_path, "r") as f:
-                    right_content = f.read()
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        right_content = f.read()
+                except UnicodeDecodeError:
+                    right_content = (
+                        "Cannot display file content due to encoding issues."
+                    )
             else:
                 right_content = f"Opens with: {config['open_with']}"
 
