@@ -1,7 +1,7 @@
 # jot.
-
+<sub>I forgot OneNote exists</sub>
 ## Overview
-jot. is a note manager through the CLI. It is a simple two-panel app to show everything you need
+jot. is a note manager through the CLI. It is a simple two-panel app to show everything you need.
 
 ## Install
 1. Clone the repository
